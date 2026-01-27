@@ -1,15 +1,27 @@
 package main
 
-import "log"
-import "github.com/meanmachine889/distributed-orchestrator/orchestrator/internal/store"
+import (
+	"log"
+	"net/http"
+	"os"
+
+	"github.com/meanmachine889/distributed-orchestrator/orchestrator/internal/api"
+	"github.com/meanmachine889/distributed-orchestrator/orchestrator/internal/queue"
+	"github.com/meanmachine889/distributed-orchestrator/orchestrator/internal/store"
+)
 
 func main() {
-	_, err := store.New()
+	db, err := store.New()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Failed to connect to database: %v", err)
 	}
 
-	log.Println("DB connected")
+	jobQueue := queue.New(os.Getenv("REDIS_URL"))
+	handler := api.NewHandler(db, jobQueue)
 
-	// pass db to API, scheduler, etc
+	mux := http.NewServeMux()
+	handler.RegisterRoutes(mux)
+
+	log.Println("Orchestrator listening on :8080")
+	log.Fatal(http.ListenAndServe(":8080", mux))
 }
