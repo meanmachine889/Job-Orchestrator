@@ -1,7 +1,10 @@
+//this file sets up a Redis-backed queue for job processing
+
 package queue
 
 import (
 	"context"
+
 	"github.com/redis/go-redis/v9"
 )
 
@@ -19,6 +22,6 @@ func New(redisUrl string) *Queue {
 	}
 }
 
-func (q *Queue) Enqueue(ctx context.Context, queueName string, jobId string) error {
+func (q *Queue) Enqueue(ctx context.Context, jobId string) error {
 	return q.client.LPush(ctx, "job_queue", jobId).Err()
 }

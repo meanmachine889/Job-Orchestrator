@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type Job struct {
+type JobCreate struct {
 	ID             uuid.UUID
 	Type           string
 	Payload        json.RawMessage
@@ -16,7 +16,7 @@ type Job struct {
 	TimeoutSeconds int
 }
 
-func (s *Store) CreateJob(ctx context.Context, job *Job) error {
+func (s *Store) CreateJob(ctx context.Context, job *JobCreate) error {
 	_, err := s.db.ExecContext(ctx,
 		`INSERT INTO jobs (
 id, type, payload, status, max_retries, timeout_seconds
@@ -29,4 +29,4 @@ id, type, payload, status, max_retries, timeout_seconds
 		job.TimeoutSeconds,
 	)
 	return err
-}
+}	
