@@ -74,3 +74,9 @@ func (s *Store) AssignNextJob(ctx context.Context, workerID uuid.UUID) (*JobCrea
 
 	return &job, nil
 }
+
+func (s *Store) ReportJobResult(ctx context.Context, jobID uuid.UUID, status string, errMsg string) error {
+	query := `UPDATE jobs SET status = $1, error = $2, updated_at = NOW() WHERE id = $3`
+	_, err := s.db.ExecContext(ctx, query, status, errMsg, jobID)
+	return err
+}
