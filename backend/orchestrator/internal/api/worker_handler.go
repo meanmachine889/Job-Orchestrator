@@ -17,6 +17,13 @@ type heartbeatRequest struct {
 	ID string `json:"id"`
 }
 
+type WorkerDTO struct {
+	ID            string    `json:"id"`
+	Hostname      string    `json:"hostname"`
+	Status        string    `json:"status"`
+	LastHeartbeat time.Time `json:"last_heartbeat"`
+}
+
 func (h *Handler) RegisterWorker(w http.ResponseWriter, r *http.Request) {
 	var req registerWorkerRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
@@ -41,7 +48,7 @@ func (h *Handler) RegisterWorker(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func(h *Handler) Heartbeat(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) Heartbeat(w http.ResponseWriter, r *http.Request) {
 	var req heartbeatRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
@@ -66,6 +73,32 @@ func(h *Handler) Heartbeat(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(map[string]string{
-		"status" : "ONLINE",
+		"status": "ONLINE",
+	})
+}
+
+func (h *Handler) ListWorkers(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	workers, err := h.store.ListWorkers(ctx)
+	if err != nil {
+		http.Error(w, "Failed to list workers", http.StatusInternalServerError)
+		return
+	}
+
+	var workerDTOs []WorkerDTO
+	for _, w := range workers {
+		workerDTOs = append(workerDTOs, WorkerDTO{
+			ID:            w.ID.String(),
+			Hostname:      w.Hostname,
+			Status:        w.Status,
+			LastHeartbeat: w.LastHeartbeat,
+		})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"workers": workerDTOs,
 	})
 }
