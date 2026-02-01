@@ -24,7 +24,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 
 	mux.HandleFunc("/workers/register", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
-			h.RegisterWorker(w,r)
+			h.RegisterWorker(w, r)
 			return
 		}
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -32,7 +32,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 
 	mux.HandleFunc("/workers/heartbeat", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
-			h.Heartbeat(w,r)
+			h.Heartbeat(w, r)
 			return
 		}
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -40,9 +40,18 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 
 	mux.HandleFunc("/workers", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {
-			h.ListWorkers(w,r)
+			h.ListWorkers(w, r)
 			return
 		}
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-	})	
+	})
+
+	mux.HandleFunc("/jobs/next", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			h.AssignNextJob(w, r)
+			return
+		}
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	})
+
 }

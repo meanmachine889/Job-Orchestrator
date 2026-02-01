@@ -201,3 +201,45 @@ func (h *Handler) GetJobDetail(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(dto)
 }
+
+func (h *Handler) AssignNextJob(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		WorkerId string `json:"worker_id"`
+	}
+
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	workerId, err := uuid.Parse(req.WorkerId)
+	if err != nil {
+		http.Error(w, "Invalid worker ID", http.StatusBadRequest)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	job, err := h.store.AssignNextJob(ctx, workerId)
+	if err != nil {
+		http.Error(w, "Failed to assign job", http.StatusInternalServerError)
+		return
+	}
+
+	if job == nil {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	resp := map[string]any{
+		"job_id":  job.ID.String(),
+		"type":    job.Type,
+		"payload": job.Payload,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+
+}

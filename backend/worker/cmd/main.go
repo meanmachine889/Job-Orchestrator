@@ -40,6 +40,24 @@ func main() {
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
 
+	go func() {
+		for {
+			time.Sleep(10 * time.Second)
+			job, err := client.FetchJob(workerId)
+			if err != nil {
+				log.Println("Failed to fetch job:", err)
+				continue
+			}
+			if job == nil {
+				log.Println("No job available")
+				continue
+			}
+
+			log.Printf("Fetched job: %+v\n", job)
+			// Here you would process the job
+		}
+	}()
+
 	for {
 		select {
 		case <-ticker.C:
