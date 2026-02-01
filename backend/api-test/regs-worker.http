@@ -1,0 +1,6 @@
+POST http://localhost:8080/workers/register
+Content-Type: application/json
+
+{
+  "hostname":"worker-2"
+}

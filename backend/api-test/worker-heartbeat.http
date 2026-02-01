@@ -1,0 +1,6 @@
+POST http://localhost:8080/workers/heartbeat
+Content-Type: application/json
+
+{
+  "id":"5e6760f5-2849-4694-98d9-9db2faec386a"
+}

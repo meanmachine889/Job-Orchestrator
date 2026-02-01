@@ -148,8 +148,8 @@ func (h *Handler) ListJobs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := map[string]interface{}{
-		"jobs": response,
-		"limit": limit,
+		"jobs":   response,
+		"limit":  limit,
 		"offset": offset,
 	}
 
@@ -157,7 +157,7 @@ func (h *Handler) ListJobs(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(resp)
 }
 
-func (h* Handler) GetJobDetail(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) GetJobDetail(w http.ResponseWriter, r *http.Request) {
 	idStr := strings.TrimPrefix(r.URL.Path, "/jobs/")
 	jobId, err := uuid.Parse(idStr)
 	if err != nil {
@@ -197,7 +197,7 @@ func (h* Handler) GetJobDetail(w http.ResponseWriter, r *http.Request) {
 		CreatedAt:      job.CreatedAt,
 		UpdatedAt:      job.UpdatedAt,
 	}
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(dto)
 }

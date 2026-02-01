@@ -21,4 +21,20 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 		}
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	})
+
+	mux.HandleFunc("/workers/register", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			h.RegisterWorker(w,r)
+			return
+		}
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	})
+
+	mux.HandleFunc("/workers/heartbeat", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			h.Heartbeat(w,r)
+			return
+		}
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	})
 }
