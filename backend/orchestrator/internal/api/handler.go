@@ -234,12 +234,63 @@ func (h *Handler) AssignNextJob(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := map[string]any{
-		"job_id":  job.ID.String(),
-		"type":    job.Type,
-		"payload": job.Payload,
+		"job_id":      job.ID.String(),
+		"type":        job.Type,
+		"payload":     job.Payload,
+		"retry_count": job.RetryCount,
+		"max_retries": job.MaxRetries,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
 
+}
+
+func (h *Handler) ReportJobResult(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		JobId  string `json:"job_id"`
+		Status string `json:"status"`
+		Error  string `json:"error"`
+	}
+
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	jobid, err := uuid.Parse(req.JobId)
+	if err != nil {
+		http.Error(w, "Invalid job ID", http.StatusBadRequest)
+		return
+	}
+
+	if req.Status != "SUCCESS" && req.Status != "FAILED" {
+		http.Error(w, "invalid status", http.StatusBadRequest)
+		return
+	}
+
+	if req.Status == "FAILED" {
+		err, retried := h.store.HandleJobFailures(r.Context(), jobid, req.Error)
+		if err != nil {
+			http.Error(w, "Failed to handle job failure", http.StatusInternalServerError)
+			return
+		}
+		if retried {
+			h.queue.Enqueue(r.Context(), req.JobId)
+		}
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	err = h.store.ReportJobResult(ctx, jobid, req.Status, req.Error)
+	if err != nil {
+		http.Error(w, "Failed to report job result", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }

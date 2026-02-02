@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 	"os/signal"
@@ -8,7 +9,9 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
+	"github.com/meanmachine889/distributed-orchestrator/worker/internal/executor"
 	"github.com/meanmachine889/distributed-orchestrator/worker/internal/orchestrator"
+	redisclient "github.com/meanmachine889/distributed-orchestrator/worker/internal/redis"
 )
 
 func main() {
@@ -40,21 +43,45 @@ func main() {
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
 
+	redisClient := redisclient.New(os.Getenv("REDIS_URL"))
+
 	go func() {
 		for {
-			time.Sleep(10 * time.Second)
+
+			jobId, err := redisClient.WaitForJob(context.Background())
+
+			if err != nil {
+				log.Println("Redis wait failed:", err)
+				continue
+			}
+
+			log.Println("Woken by Redis for job:", jobId)
 			job, err := client.FetchJob(workerId)
 			if err != nil {
 				log.Println("Failed to fetch job:", err)
 				continue
 			}
 			if job == nil {
-				log.Println("No job available")
 				continue
 			}
-
-			log.Printf("Fetched job: %+v\n", job)
-			// Here you would process the job
+			attempt := job.RetryCount + 1
+			if job.RetryCount > 0 {
+				log.Printf("Retrying job %s (attempt %d/%d)", job.ID, attempt, job.MaxRetries+1)
+			} else {
+				log.Printf("Executing job: %s (max retries: %d)", job.ID, job.MaxRetries)
+			}
+			err = executor.Execute(job.Type)
+			if err != nil {
+				if attempt == job.MaxRetries+1 {
+					log.Printf("Job %s DEAD after %d attempts: %v", job.ID, attempt, err)
+				} else {
+					log.Printf("Job %s FAILED on attempt %d/%d: %v", job.ID, attempt, job.MaxRetries+1, err)
+				}
+				time.Sleep(time.Duration(2^attempt) * 2*time.Second)
+				client.ReportJobResult(job.ID.String(), "FAILED", err.Error())
+			} else {
+				client.ReportJobResult(job.ID.String(), "SUCCESS", "")
+			}
 		}
 	}()
 
@@ -64,8 +91,6 @@ func main() {
 			err := client.SendHeartbeat(workerId)
 			if err != nil {
 				log.Println("Failed to send heartbeat:", err)
-			} else {
-				log.Println("Heartbeat sent")
 			}
 		case <-sig:
 			log.Println("Shutting down worker...")

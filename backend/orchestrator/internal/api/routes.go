@@ -54,4 +54,12 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	})
 
+	mux.HandleFunc("/jobs/report", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			h.ReportJobResult(w, r)
+			return
+		}
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	})
+
 }

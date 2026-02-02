@@ -13,6 +13,7 @@ type JobCreate struct {
 	Type           string
 	Payload        json.RawMessage
 	Status         string
+	RetryCount     int
 	MaxRetries     int
 	TimeoutSeconds int
 }
@@ -45,10 +46,9 @@ func (s *Store) AssignNextJob(ctx context.Context, workerID uuid.UUID) (*JobCrea
 	// It uses row-level locking (FOR UPDATE) to prevent concurrent access,
 	// and SKIP LOCKED to avoid waiting on already-locked rows, enabling
 	// multiple workers to efficiently pick up different pending jobs simultaneously.
-	// Note: There appears to be a missing closing quote after 'PENDING in the status condition.
-	query := `SELECT id, type, payload FROM jobs WHERE status = 'PENDING' ORDER BY created_at LIMIT 1 FOR UPDATE SKIP LOCKED`
+	query := `SELECT id, type, payload, retry_count, max_retries FROM jobs WHERE status = 'PENDING' ORDER BY created_at LIMIT 1 FOR UPDATE SKIP LOCKED`
 
-	err = tx.QueryRowContext(ctx, query).Scan(&job.ID, &job.Type, &job.Payload)
+	err = tx.QueryRowContext(ctx, query).Scan(&job.ID, &job.Type, &job.Payload, &job.RetryCount, &job.MaxRetries)
 
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -79,4 +79,37 @@ func (s *Store) ReportJobResult(ctx context.Context, jobID uuid.UUID, status str
 	query := `UPDATE jobs SET status = $1, error = $2, updated_at = NOW() WHERE id = $3`
 	_, err := s.db.ExecContext(ctx, query, status, errMsg, jobID)
 	return err
+}
+
+func (s *Store) HandleJobFailures(ctx context.Context, jobId uuid.UUID, errormsg string) (error, bool) {
+	var retrycount, max_retries int
+
+	err := s.db.QueryRowContext(ctx,
+		`SELECT retry_count, max_retries FROM jobs WHERE id = $1`,
+		jobId,
+	).Scan(&retrycount, &max_retries)
+
+	if err != nil {
+		return err, false
+	}
+
+	if retrycount+1 > max_retries {
+		_, err = s.db.ExecContext(ctx,
+			`UPDATE jobs SET status = 'DEAD', error = $1, updated_at = NOW() WHERE id = $2`,
+			errormsg,
+			jobId,
+		)
+		return err, false
+	}
+
+	_, err = s.db.ExecContext(ctx,
+		`UPDATE jobs SET status = 'PENDING', retry_count = retry_count + 1, error = $1, updated_at = NOW() WHERE id = $2`,
+		errormsg,
+		jobId,
+	)
+	if err != nil {
+		return err, false
+	}
+
+	return nil, true
 }

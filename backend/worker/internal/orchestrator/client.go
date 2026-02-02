@@ -9,12 +9,13 @@ import (
 )
 
 type JobCreate struct {
-	ID             uuid.UUID
-	Type           string
-	Payload        json.RawMessage
-	Status         string
-	MaxRetries     int
-	TimeoutSeconds int
+	ID             uuid.UUID       `json:"job_id"`
+	Type           string          `json:"type"`
+	Payload        json.RawMessage `json:"payload"`
+	Status         string          `json:"status"`
+	RetryCount     int             `json:"retry_count"`
+	MaxRetries     int             `json:"max_retries"`
+	TimeoutSeconds int             `json:"timeout_seconds"`
 }
 
 type Client struct {
@@ -79,4 +80,15 @@ func (c *Client) FetchJob(workerID string) (*JobCreate, error) {
 	}
 
 	return &job, nil
+}
+
+func (c *Client) ReportJobResult(jobID string, status string, errMsg string) error {
+	body, _ := json.Marshal(map[string]string{
+		"job_id": jobID,
+		"status": status,
+		"error":  errMsg,
+	})
+
+	_, err := http.Post(c.baseUrl+"/jobs/report", "application/json", bytes.NewBuffer(body))
+	return err
 }
