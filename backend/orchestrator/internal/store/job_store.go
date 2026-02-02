@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"log"
 
 	"github.com/google/uuid"
 )
@@ -67,6 +68,8 @@ func (s *Store) AssignNextJob(ctx context.Context, workerID uuid.UUID) (*JobCrea
 	if err != nil {
 		return nil, err
 	}
+
+	log.Println("Assigning job", job.ID, "to worker", workerID)
 
 	if err := tx.Commit(); err != nil {
 		return nil, err

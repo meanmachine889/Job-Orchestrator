@@ -38,7 +38,7 @@ type JobDTO struct {
 	Type       string    `json:"type"`
 	Status     string    `json:"status"`
 	RetryCount int       `json:"retry_count"`
-	WorkerID   *string   `json:"worker_id"`
+	WorkerID   string   `json:"worker_id"`
 	CreatedAt  time.Time `json:"created_at"`
 }
 
@@ -143,6 +143,7 @@ func (h *Handler) ListJobs(w http.ResponseWriter, r *http.Request) {
 			Status:     job.Status,
 			RetryCount: job.RetryCount,
 			CreatedAt:  job.CreatedAt,
+			WorkerID:   job.WorkerID.String(),
 		}
 		response = append(response, dto)
 	}
