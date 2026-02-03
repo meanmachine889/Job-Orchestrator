@@ -73,7 +73,7 @@ export default function JobsPage() {
               className="cursor-pointer hover:bg-muted/50"
               onClick={() => router.push(`/jobs/${job.id}`)}
             >
-              <TableCell className="font-mono text-xs truncate max-w-[120px]">
+              <TableCell className="font-mono text-xs truncate">
                 {job.id}
               </TableCell>
               <TableCell className="text-sm">{job.type}</TableCell>
